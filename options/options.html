@@ -20,7 +20,8 @@
     </section>
 
     <section class="card" id="aiCard">
-      <h2>AI 接口配置</h2>
+      <h2 id="aiTitle">AI 接口配置</h2>
+      <div id="aiFields">
       <label class="field">
         <span>接口地址（Chat Completions）</span>
         <input type="text" id="aiBaseUrl" placeholder="https://api.deepseek.com/chat/completions" title="支持任意兼容 OpenAI 协议的服务：只填域名会自动补全路径。DeepSeek 填 https://api.deepseek.com/chat/completions；本地 Ollama 填 http://localhost:11434/v1/chat/completions。" />
@@ -42,12 +43,25 @@
         <button id="testConn" class="ghost-btn" type="button">测试连接</button>
         <span id="testResult"></span>
       </div>
+      </div>
+
+      <div class="card-sect" id="backupSect">
+        <h3 class="sect-title">配置备份</h3>
+        <p class="tip" title="把当前全部配置（含 AI 接口与 Key）导出为本地文件，重装或配置丢失后可一键导入恢复，无需重填。导出的文件含明文 Key，别分享给别人。">导出为本地文件，可一键恢复。</p>
+        <div class="cat-actions">
+          <button id="exportCfg" class="ghost-btn" type="button">导出配置</button>
+          <button id="importCfg" class="ghost-btn" type="button">导入配置</button>
+          <input type="file" id="importFile" accept=".json,application/json" style="display:none" />
+          <span id="cfgStatus"></span>
+        </div>
+      </div>
     </section>
 
     <section class="card" id="catCard">
       <h2>分类标签管理</h2>
       <p class="tip" title="这张表什么时候是「归类依据」：关键词模式下它就是全部规则；AI 模式下只有取消勾选「参考书签现有的文件夹路径」时它才是依据（这时它才会显示出来），勾选路径时本卡片会隐藏。可编辑分类名称、颜色与关键词（逗号、顿号、分号都能分隔；关键词匹配书签的标题或网址），「其他」为兜底分类不可删除。关键词就是分类的定义 —— AI 模式下各类的名称与关键词会一起送给 AI 作为归类依据，关键词填得越准分得越准；只写名字、关键词留空，AI 就只能按名字字面猜。删除分类要慎重：删掉之后这个分类名 AI 再也看不到，原本属于它的书签只会被塞进其它分类（大概率是兜底的「其他」）；只是不想要某些关键词的话，把文本框清空即可。">名称与关键词就是归类依据。</p>
       <div id="catList"></div>
+      <button id="catToggle" class="ghost-btn" type="button" hidden></button>
       <div class="cat-actions">
         <button id="addCat" class="ghost-btn" type="button">+ 添加分类</button>
         <button id="resetCat" class="ghost-btn" type="button">恢复默认分类</button>
@@ -111,17 +125,6 @@
         <input type="number" id="freqPerCat" min="0" max="20" step="1" placeholder="1" />
       </label>
       <p class="tip" title="访问次数少于 2 次的书签不参与全库评选（点过一两次说明不了「高频」），但仍可被「每分类保底」选中 —— 这样即使某个分类里的书签访问都不多，它的上级目录也不会全是文件夹。">访问少于 2 次不参与评选。</p>
-    </section>
-
-    <section class="card">
-      <h2>配置备份</h2>
-      <p class="tip" title="把当前全部配置（含 AI 接口与 Key）导出为本地文件，重装或配置丢失后可一键导入恢复，无需重填。导出的文件含明文 Key，别分享给别人。">导出为本地文件，可一键恢复。</p>
-      <div class="cat-actions">
-        <button id="exportCfg" class="ghost-btn" type="button">导出配置</button>
-        <button id="importCfg" class="ghost-btn" type="button">导入配置</button>
-        <input type="file" id="importFile" accept=".json,application/json" style="display:none" />
-        <span id="cfgStatus"></span>
-      </div>
     </section>
 
     <div class="actions">

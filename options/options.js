@@ -1,6 +1,7 @@
 // 复用共享默认值（js/config.js），不再本地声明 DEFAULTS
 const $ = (id) => document.getElementById(id);
 let cats = []; // 当前编辑中的分类数组（内存态）
+let catsExpanded = false; // 分类列表是否展开（默认收拢，只露前 3 个）
 
 // 解析「每个分类下二级子文件夹上限」：非法/空值回退到默认值（0 是合法值，表示不做二级细分）
 function readMaxSubFolders(v) {
@@ -129,13 +130,27 @@ function renderCats() {
       renderCats();
     })
   );
+
+  // 收拢展示：默认只露前 3 个分类，点「展开全部分类」看全貌。
+  // 分类本来就有十来个，全部平铺会把设置页拉得很长，而多数人只调其中两三个。
+  // 状态只存内存（本次打开有效），下次进设置页仍默认收拢。
+  const toggle = $("catToggle");
+  if (toggle) {
+    wrap.classList.toggle("collapsed", !catsExpanded);
+    if (cats.length > 3) {
+      toggle.hidden = false;
+      toggle.textContent = catsExpanded ? "收起" : `展开全部分类（共 ${cats.length} 个）`;
+    } else {
+      toggle.hidden = true;
+    }
+  }
 }
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
 }
 
-// 按分类方法切换两块卡片（AI 卡片只在 AI 模式下有意义：关键词模式不联网）。
+// 按分类方法切换卡片（关键词模式不联网，AI 专属字段无需出现）。
 // 「分类标签管理」什么时候该出现 —— 判据只有一条：**这张表此刻是不是归类依据**。
 //   · 关键词模式        → 完全按表归类                        → 显示
 //   · AI + 未勾选路径   → 表就是 AI 的归类依据（大类只能从表里选）→ 显示
@@ -143,11 +158,15 @@ function escapeHtml(s) {
 // 为什么不做成「AI 模式一律隐藏」（第一版就是这么写的）：在「未勾选」这条路径上，
 //   表是唯一依据，而它一旦被删到只剩兜底分类，AI 就无处可抄、只能把书签全塞进「其他」
 //   （线上出过的真实症状）。此时把编辑入口一并藏掉，等于用户看着坏结果却无从自救。
+// 整张 AI 卡片（含里面的「配置备份」）只在 AI 模式出现（2026-09-29 zn 定：
+//   配置备份是为迁移 AI 接口配置用的，关键词模式没有它要备份的东西）。
 function toggleMethodCards() {
   const method = document.querySelector('input[name="method"]:checked').value;
   const hint = $("useFolderHint");
   const folderHint = !!(hint && hint.checked);
-  $("aiCard").style.display = method === "ai" ? "block" : "none";
+  const isAi = method === "ai";
+  const aiCard = $("aiCard");
+  if (aiCard) aiCard.style.display = isAi ? "block" : "none";
   const catCard = $("catCard");
   if (catCard) catCard.style.display = method === "keyword" || !folderHint ? "block" : "none";
 }
@@ -205,12 +224,20 @@ document.querySelectorAll('input[name="method"]').forEach((r) =>
 // 「参考书签现有的文件夹路径」既是归类依据的开关，也决定「分类标签管理」要不要露脸 → 勾选变化就重排卡片
 $("useFolderHint").addEventListener("change", toggleMethodCards);
 
+// 分类列表「展开全部 / 收起」
+$("catToggle").addEventListener("click", () => {
+  catsExpanded = !catsExpanded;
+  renderCats();
+});
+
 $("addCat").addEventListener("click", () => {
+  catsExpanded = true; // 新分类排在末尾，收拢状态下看不见，主动展开
   cats.push({ id: "cat_" + Date.now(), name: "新分类", color: "#64748b", keywords: [] });
   renderCats();
 });
 
 $("resetCat").addEventListener("click", () => {
+  catsExpanded = true;
   cats = cloneDefault();
   renderCats();
 });
@@ -448,6 +475,7 @@ async function applySuggestions() {
     { perCat: suggestState ? suggestState.stats.perCat : null, maxRemoveSize: SUGGEST_MAX_REMOVE_SIZE }
   );
   cats = m.cats;
+  catsExpanded = true; // 建议应用后用户要看到改了什么，主动展开
   renderCats();
   await save(); // 用户已经确认过了，直接落盘，不让他再记得点「保存设置」
   await refreshUndoSuggestBtn();
@@ -467,6 +495,7 @@ $("undoSuggest").addEventListener("click", async () => {
   const snap = await loadSuggestUndo();
   if (!snap || !Array.isArray(snap.cats) || !snap.cats.length) return;
   cats = JSON.parse(JSON.stringify(snap.cats));
+  catsExpanded = true;
   renderCats();
   await saveSuggestUndo(null);
   await save();
@@ -581,7 +610,12 @@ $("importFile").addEventListener("change", async (e) => {
     const text = await file.text();
     const cfg = JSON.parse(text);
     if (!cfg || typeof cfg !== "object") throw new Error("文件内容不是有效配置");
-    if (!cfg.aiBaseUrl || !cfg.aiModel) throw new Error("缺少 aiBaseUrl 或 aiModel 字段");
+    // 用「本插件特征字段」判断是不是配置文件，**不要**要求 aiBaseUrl/aiModel 非空 ——
+    // 关键词模式用户从没配过 AI 接口，导出的配置里这两项本来就是空串，
+    // 旧校验会把自己导出的备份当成非法文件、永远导不回来（线上真实症状）。
+    const looksLikeCfg =
+      Array.isArray(cfg.userCategories) || typeof cfg.method === "string" || cfg.version != null;
+    if (!looksLikeCfg) throw new Error("这不是「书签智能整理」的配置文件");
     // 回填表单
     document.querySelector(`input[name="method"][value="${cfg.method || "keyword"}"]`).checked = true;
     $("aiBaseUrl").value = cfg.aiBaseUrl || "";

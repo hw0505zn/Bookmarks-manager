@@ -64,6 +64,9 @@ h2 { font-size: 14px; margin: 0 0 10px; }
   background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
   padding: 12px 14px; margin-bottom: 12px; box-shadow: var(--shadow);
 }
+/* 卡片内分节：如 AI 卡片里的「配置备份」 */
+.card-sect { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.sect-title { font-size: 13px; margin: 0 0 8px; }
 .radio, .check { display: block; margin: 6px 0; cursor: pointer; }
 .check input, .radio input { margin: 0 6px 0 0; vertical-align: -1px; }
 .field { display: block; margin: 10px 0; }
@@ -146,6 +149,9 @@ button.primary:hover { filter: brightness(1.08); }
   flex: none; color: var(--muted); font-size: 12px; padding: 3px 8px;
   border: 1px solid var(--border); border-radius: 20px;
 }
+/* 收拢态：默认只露前 3 个分类，其余靠「展开全部分类」按钮 */
+#catList.collapsed .cat-edit:nth-child(n+4) { display: none; }
+#catToggle { margin-top: 2px; }
 
 /* ---- AI 建议大类：建议面板 ----
    两条硬原则体现在样式上：① 新增用绿色边、删除用红色边 —— 删大类是危险动作，必须一眼可辨；
