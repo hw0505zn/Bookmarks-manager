@@ -1,0 +1,174 @@
+/* ============================================================
+   主题：跟随浏览器（夜间 / 日间）
+   与 popup.css 用同一套变量名，方便两边一起改。
+   :root 里是**浅色**默认值，prefers-color-scheme: dark 里整体覆盖一遍。
+   规则：任何地方都不许写死颜色 —— 写死一处，主题一切换就会出现
+   "白底上的淡灰字"这种看不见的角落，而用户只会觉得"这个插件很糙"。
+   ============================================================ */
+:root {
+  color-scheme: light;
+  --page: #f5f6f9;
+  --bg: #ffffff;
+  --panel: #f4f6f9;
+  --panel2: #e6eaf1;
+  --border: #dde3ec;
+  --text: #1a2233;
+  --muted: #6b7789;
+  --accent: #3b6fe0;
+  --accent-ink: #ffffff;
+  --warn: #b4790a;
+  --ok: #15803d;
+  --err: #dc2626;
+  --danger: #c0392b;
+  --code-bg: #eef1f7;
+  --code-ink: #2f56ab;
+  --shadow: 0 1px 2px rgba(15, 23, 42, .05);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #0b1220;
+    --bg: #0f172a;
+    --panel: #1b2637;
+    --panel2: #273449;
+    --border: #2c3a4f;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #5b8def;
+    --warn: #eab308;
+    --ok: #22c55e;
+    --err: #ef4444;
+    --danger: #ef5350;
+    --code-bg: #0b1220;
+    --code-ink: #93b4ff;
+    --shadow: none;
+  }
+}
+
+* { box-sizing: border-box; }
+/* hidden 属性必须真的隐藏：建议面板/撤销按钮都靠它开合，
+   而下面好几个容器写了 display:flex/grid —— 会盖掉浏览器默认的 [hidden] */
+[hidden] { display: none !important; }
+html { background: var(--page); }
+body {
+  margin: 0; background: var(--page); color: var(--text);
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 13px;
+}
+.wrap { max-width: 640px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: 18px; margin: 0 0 14px; }
+h2 { font-size: 14px; margin: 0 0 10px; }
+
+/* ---- 卡片：收紧留白，一屏尽量多放 ---- */
+.card {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 12px; box-shadow: var(--shadow);
+}
+.radio, .check { display: block; margin: 6px 0; cursor: pointer; }
+.check input, .radio input { margin: 0 6px 0 0; vertical-align: -1px; }
+.field { display: block; margin: 10px 0; }
+.field > span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+.field input, .field select {
+  width: 100%; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); font-size: 13px;
+}
+.field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+
+/* ---- 解释文字：界面只留一句话，完整说明在 title（悬停可见） ---- */
+.tip { color: var(--muted); font-size: 12px; line-height: 1.55; margin: 6px 0 0; }
+.tip[title] { cursor: help; }
+.tip code {
+  background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px;
+  padding: 0 4px; color: var(--code-ink); font-size: 12px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+/* 权限状态行：绿=已授权可用，黄=未授权（可用但不自动识别） */
+.tip.ok { color: var(--ok); }
+.tip.warn { color: var(--warn); }
+
+/* ---- API Key 输入 + 显示/隐藏 ---- */
+.key-wrap { display: flex; gap: 6px; }
+.key-wrap input { flex: 1; min-width: 0; }
+.key-toggle {
+  flex: none; width: 40px; border: 1px solid var(--border); border-radius: 7px;
+  background: var(--panel); color: var(--text); cursor: pointer; font-size: 14px;
+}
+.key-toggle:hover { background: var(--panel2); }
+
+/* ---- 按钮 ---- */
+.actions { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+button.primary {
+  background: var(--accent); color: var(--accent-ink); border: none; padding: 9px 20px;
+  border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+button.primary:hover { filter: brightness(1.08); }
+.ghost-btn {
+  background: transparent; color: var(--text); border: 1px solid var(--border);
+  padding: 6px 12px; border-radius: 7px; cursor: pointer; font-size: 12.5px;
+}
+.ghost-btn:hover { background: var(--panel); }
+.ghost-btn:disabled { opacity: .5; cursor: default; }
+.ghost-btn.primary-ghost { border-color: var(--accent); color: var(--accent); }
+.cat-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+
+/* ---- 状态文字：绿=成功 红=失败 ---- */
+#status, #testResult, #cfgStatus { font-size: 12.5px; line-height: 1.5; color: var(--ok); }
+#testResult, #cfgStatus { word-break: break-all; white-space: pre-line; }
+#status.err, #testResult.err, #cfgStatus.err { color: var(--err); }
+#testResult.ok, #cfgStatus.ok { color: var(--ok); }
+
+/* ---- 分类标签管理 ---- */
+.cat-edit {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; margin-bottom: 8px;
+}
+.cat-line { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.c-color {
+  width: 30px; height: 28px; padding: 0; flex: none; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 6px; background: none;
+}
+.c-name {
+  flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 13px;
+}
+.c-name:focus, .c-kw:focus { outline: none; border-color: var(--accent); }
+.c-kw {
+  width: 100%; min-height: 48px; resize: vertical; padding: 6px 8px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  font-size: 12.5px; line-height: 1.5; font-family: inherit;
+}
+.c-del {
+  flex: none; background: transparent; color: var(--err); border: 1px solid var(--err);
+  padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px;
+}
+.c-del:hover { background: color-mix(in srgb, var(--err) 12%, transparent); }
+.c-sys {
+  flex: none; color: var(--muted); font-size: 12px; padding: 3px 8px;
+  border: 1px solid var(--border); border-radius: 20px;
+}
+
+/* ---- AI 建议大类：建议面板 ----
+   两条硬原则体现在样式上：① 新增用绿色边、删除用红色边 —— 删大类是危险动作，必须一眼可辨；
+   ② 一切都要先勾选再点「应用」，没有任何"自动应用"的入口。 */
+.suggest-box {
+  margin-top: 10px; border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; background: var(--panel);
+}
+.sug-head { font-size: 12.5px; color: var(--text); margin: 0 0 8px; line-height: 1.55; }
+.sug-group-title { font-size: 12px; color: var(--muted); margin: 10px 0 5px; }
+.sug-row {
+  display: flex; gap: 7px; align-items: flex-start; padding: 7px 9px; border-radius: 7px;
+  margin-bottom: 6px; background: var(--bg); border-left: 3px solid var(--border); cursor: pointer;
+}
+.sug-row.add { border-left-color: var(--ok); }
+.sug-row.del { border-left-color: var(--err); }
+.sug-row input { margin-top: 2px; flex: none; }
+.sug-body { flex: 1; min-width: 0; }
+.sug-name { font-size: 12.5px; color: var(--text); font-weight: 600; }
+.sug-kw, .sug-reason { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.5; word-break: break-all; }
+.sug-warn { font-size: 12px; color: var(--warn); margin-top: 2px; line-height: 1.5; }
+.sug-rejected { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.55; }
+.sug-actions { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+#suggestStatus { font-size: 12px; color: var(--muted); }
+#suggestStatus.ok { color: var(--ok); }
+#suggestStatus.err { color: var(--err); }

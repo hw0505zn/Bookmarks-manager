@@ -1,0 +1,27 @@
+# ---- AI 会话记忆：含个人工作日志与项目笔记，不入库 ----
+.workbuddy/memory/
+# 早期日志曾直接散在 .workbuddy 根目录，一并排除
+.workbuddy/*.md
+
+# ---- ui-shot 生成/用过的静态预览页：源码现算的产物，不入库 ----
+.workbuddy/preview/ui/
+.workbuddy/preview/ui-nodedupe/
+.workbuddy/preview/*.html
+
+# ---- 一次性排查脚本与其输出（排查某个具体问题时写的，无长期价值）----
+.workbuddy/preview/_*.txt
+.workbuddy/preview/syntax-check.txt
+.workbuddy/preview/analyze-cache.js
+.workbuddy/preview/diag-unclassified.js
+.workbuddy/preview/dump-storage.js
+.workbuddy/preview/dump-sync.js
+.workbuddy/preview/inspect-bookmarks.js
+.workbuddy/preview/sim-planlayer.js
+
+# ---- 上架打包产物（store/pack.py 的输出）----
+store/releases/
+*.zip
+
+# ---- 系统噪声 ----
+.DS_Store
+Thumbs.db

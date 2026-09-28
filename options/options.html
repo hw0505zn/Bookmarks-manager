@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="options.css" />
+  <title>书签智能整理 · 设置</title>
+</head>
+<body>
+  <main class="wrap">
+    <h1>书签智能整理 · 设置</h1>
+
+    <!-- 文案约定：界面上每段解释 ≤20 字，完整说明放 title（悬停可见）。
+         想展开看细节：把鼠标放在灰字上。 -->
+
+    <section class="card">
+      <h2>分类方法</h2>
+      <label class="radio"><input type="radio" name="method" value="keyword" /> 关键词规则（离线免费）</label>
+      <label class="radio"><input type="radio" name="method" value="ai" /> AI 智能分类（需配置接口）</label>
+      <p class="tip" title="关键词规则：完全按「分类标签管理」那张表归类 —— 书签标题或网址命中某类的关键词就归到那一类，不联网、免费、装完即用。AI 智能分类：大类交给 AI 判断；具体依据哪一边，由下面 AI 配置里的「分类时参考书签现有的文件夹路径」决定 —— 勾选则以你的文件夹结构为主（AI 可沿用你的文件夹名新建大类，此时「分类标签管理」不显示）；取消勾选则以分类标签表为主（这时那张表就是 AI 的归类依据，会显示出来供你编辑）。">关键词离线免费；AI 需配置接口。</p>
+    </section>
+
+    <section class="card" id="catCard">
+      <h2>分类标签管理</h2>
+      <p class="tip" title="这张表什么时候是「归类依据」：关键词模式下它就是全部规则；AI 模式下只有取消勾选「参考书签现有的文件夹路径」时它才是依据（这时它才会显示出来），勾选路径时本卡片会隐藏。可编辑分类名称、颜色与关键词（逗号、顿号、分号都能分隔；关键词匹配书签的标题或网址），「其他」为兜底分类不可删除。关键词就是分类的定义 —— AI 模式下各类的名称与关键词会一起送给 AI 作为归类依据，关键词填得越准分得越准；只写名字、关键词留空，AI 就只能按名字字面猜。删除分类要慎重：删掉之后这个分类名 AI 再也看不到，原本属于它的书签只会被塞进其它分类（大概率是兜底的「其他」）；只是不想要某些关键词的话，把文本框清空即可。">名称与关键词就是归类依据。</p>
+      <div id="catList"></div>
+      <div class="cat-actions">
+        <button id="addCat" class="ghost-btn" type="button">+ 添加分类</button>
+        <button id="resetCat" class="ghost-btn" type="button">恢复默认分类</button>
+        <button id="suggestCat" class="ghost-btn" type="button">AI 建议大类（按我的书签）</button>
+        <button id="undoSuggest" class="ghost-btn" type="button" hidden>撤销上次建议</button>
+      </div>
+      <p class="tip" id="suggestTip" title="书签多、大类不够用？点「AI 建议大类」——它会读你的书签（书签标题、网址，以及你现有的文件夹名，交给你自己配置的 AI 接口），在你当前这张表的基础上一级大类该加的加、该减的减。你原有的文件夹名是这里最可靠的依据：「网文创作」这种目录名 AI 光看标题网址猜不到，看到路径就会建议把它加进大类。只在扫描过一次之后才建议删除（否则不知道各类现有多少书签）；所有建议都要你勾选确认才会生效，且可一键撤销。若在上方取消了「参考书签现有的文件夹路径」，这里也不会带上路径。">读你的书签，建议增删大类。</p>
+      <div id="suggestBox" class="suggest-box" hidden></div>
+      <p id="suggestStatus"></p>
+    </section>
+
+    <section class="card" id="aiCard">
+      <h2>AI 接口配置</h2>
+      <label class="field">
+        <span>接口地址（Chat Completions）</span>
+        <input type="text" id="aiBaseUrl" placeholder="https://api.deepseek.com/chat/completions" title="支持任意兼容 OpenAI 协议的服务：只填域名会自动补全路径。DeepSeek 填 https://api.deepseek.com/chat/completions；本地 Ollama 填 http://localhost:11434/v1/chat/completions。" />
+      </label>
+      <label class="field">
+        <span>API Key</span>
+        <div class="key-wrap">
+          <input type="password" id="aiApiKey" placeholder="sk-..." />
+          <button id="toggleKey" class="key-toggle" type="button" title="显示/隐藏">👁</button>
+        </div>
+      </label>
+      <label class="field">
+        <span>模型名称</span>
+        <input type="text" id="aiModel" placeholder="deepseek-flash" title="常用：deepseek-flash（或 deepseek-v4-pro；deepseek-chat 为旧代名称）。" />
+      </label>
+      <label class="check"><input type="checkbox" id="useFolderHint" /> 分类时参考书签现有的文件夹路径</label>
+      <p class="tip" title="勾选（默认）：以你现有的文件夹结构为主要分类依据。AI 会看到每个书签现在放在哪个文件夹（如「台州项目 / 可研报告」），据此归纳大类；如果某个文件夹名反复出现、而分类标签表里没有相符的项，AI 会直接沿用你的叫法新建一个大类（比如「网文创作」这类只有你自己知道、光看标题网址永远猜不到的领域）。新建的大类会写进分类表，下次扫描继续沿用；想看到、改名或删掉它们，取消勾选本开关（或切到关键词模式）即可，那时「分类标签管理」会显示出来。取消勾选：不发送任何文件夹信息，AI 改为以分类标签管理那张表为主要依据，大类也只能从表里选（与关键词模式共用同一张表）。注意一个副作用：这些文件夹也可能是你上一次自动整理留下的旧名字，如果上一轮就分错了、你又没去改，AI 容易顺着旧名字继续错；觉得结果被旧结构带偏了，就取消勾选再整理一次，或在弹窗里按住 Shift 点「扫描分类」强制重算。隐私：文件夹名是你自己的文本，可能含私人信息（比如「辞职计划」），勾选后它会和书签标题、网址一起发给你自己配置的那个 AI 接口；不想发就取消勾选。">勾选按文件夹；取消按分类表。</p>
+      <div class="cat-actions">
+        <button id="testConn" class="ghost-btn" type="button">测试连接</button>
+        <span id="testResult"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>整理目标</h2>
+      <label class="field">
+        <span>目标文件夹名称</span>
+        <input type="text" id="targetFolderName" placeholder="智能书签" />
+      </label>
+      <label class="field">
+        <span>放在哪个书签根目录</span>
+        <select id="targetParentId">
+          <option value="1">书签栏</option>
+          <option value="2">其他书签</option>
+          <option value="3">移动设备书签</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="autoDedupe" /> 扫描时自动去重（删掉重复书签）</label>
+      <p class="tip" title="默认勾选：扫描书签后、交给 AI 分类之前，同一个网址存了多份的只保留最早添加的那一份，其余删除。删除会记进撤销记录，误删可在弹窗底部点「撤销上一步操作」恢复。为什么排在分类之前：重复项会让同一个书签被分到两个不同的类、生成预览时还会复制出两份，最终目录里出现 duplicate 才想起去重就晚了。取消勾选：全流程一次都不去重 —— 扫描不删、生成预览不删、执行整理也不删，重复项原样保留在最终的分类目录里（同一个网址会出现在多个分类文件夹中）。适合事先知道自己的重复是刻意的人（例如同一个网址特意放在两个文件夹里当快捷入口），宁可留着重复也不要插件删他的书签。注意：本开关改动后立即生效，下一次点「扫描分类」就按新的设置执行；已去重的部分不会被补回来。">同一网址只留一份；取消则全程不去重。</p>
+      <label class="check"><input type="checkbox" id="organizeRootItems" /> 根目录上平铺的书签也参与整理</label>
+      <p class="tip" title="默认勾选：直接放在书签栏等根目录上的书签，会与文件夹里的书签完全同规则处理 —— 参与分类、按使用频率排序，最终根目录上只留下各个分类文件夹。为什么默认勾选：书签很多、管理混乱的用户往往大部分书签都平铺在根目录上（几乎没有文件夹结构），默认跳过等于插件什么都没做。如果你习惯把常用入口钉在书签栏上一键点开、不希望它们被收进文件夹，就取消勾选 —— 这些书签会一律跳过、保持原位不动。注意：勾选后这些原书签会在执行整理时被删除（内容已复制进分类文件夹，可从弹窗底部撤销一次）。改动本开关后需要重新点「生成预览」才生效。">勾选后根目录书签也会被整理。</p>
+      <label class="check"><input type="checkbox" id="subByDomain" /> 在分类下再按域名分子文件夹</label>
+      <label class="field">
+        <span>每个分类下最多几个二级子文件夹</span>
+        <input type="number" id="maxSubFolders" min="0" max="50" step="1" placeholder="5" />
+      </label>
+      <label class="field">
+        <span>分类内书签少于几个时不细分</span>
+        <input type="number" id="minSubFolderSize" min="0" max="999" step="1" placeholder="10" />
+      </label>
+      <label class="field">
+        <span>子文件夹最少几个书签</span>
+        <input type="number" id="minSubFolderItems" min="1" max="99" step="1" placeholder="2" />
+      </label>
+      <label class="check"><input type="checkbox" id="enableThirdLevel" /> 在二级文件夹下再生成三级子文件夹（需 AI 模式）</label>
+      <p class="tip" title="AI 模式下会优先按 AI 生成的「二级标签」在各大类下自动分子文件夹（如「开发技术 / 前端框架」）；未开启 AI 或某书签无二级标签时，才按上面的「按域名细分」处理。子文件夹按书签数量从多到少取前 N 个；取名额之前会先把同义标签合并（如「代码托管」与「代码托管平台」算同一个主题），免得同义标签各占一个名额、真正独立的主题反而没位置，超出限额的标签再按语义并入最相近的标签。填 0 表示不做二级细分。确实归不进任何标签的书签会直接平铺在该分类文件夹本级 —— 插件不会为它们另建「待整理」之类的兜底文件夹（多了个没意义的文件夹反而把问题藏起来），平铺的这几个一眼就能看见，可以在弹窗底部的列表里手动调整分类。若某分类下的书签总数少于上面设定的数量（默认 10），该分类整体不做二级细分，书签直接平铺在分类文件夹里；填 0 或 1 表示不限制。书签数少于「子文件夹最少几个书签」（默认 2）的子文件夹不会创建；另外若某个文件夹下的书签全被分进子文件夹、本级一个可直接点击的书签都没有，插件会解散书签数最少的那个子文件夹、把书签提到本级，保证每一层都能直接点到东西 —— 但本层只有 1~2 个子文件夹时除外（那本来就是合理结构，解散只会把书签推回一级）。三级子文件夹由 AI 给出的三级标签生成，并逐层套用上述规则。">同义标签先合并，再取前 N 个。</p>
+    </section>
+
+    <section class="card">
+      <h2>高频书签</h2>
+      <p class="tip" title="用浏览器访问记录（最近半年）给书签打分，得分 = 访问次数 × 时间衰减，把最常用的书签挑出来。这些书签在整理时会平铺在所属分类的一级目录，不塞进二级子文件夹 —— 常用的入口不该多点一层；也可以在弹窗的书签列表里点行首的 ☆ 手动增减（手动标记优先于自动判定）。另外，每个文件夹内的直接书签还会按使用频率从上到下排列（子文件夹始终在最上面）：最常用的自动出现在最上面，手动标了 ☆ 的排到最前、标为非高频的沉到最后；没有访问记录的书签按收藏时间排列，顺序稳定不乱。自动判定需要「浏览记录」权限，这是可选权限 —— 安装本插件时不会要求它，只有你点下方「授权读取浏览记录」（或直接在弹窗里点统计条右侧的「开启高频」）时才会弹出授权框；不想给就不给，可以直接在弹窗里手动点 ☆ 标记（手动标记无需任何权限，也能影响文件夹内的排序）。关掉开关即完全停用。注意：Chrome 的书签接口没有「书签最后点击时间」这个字段，所以只能从浏览历史侧反推，无法区分「点书签进来」还是「敲地址栏进来」，因此得分反映的是该网址的总访问热度，不是纯粹的「点书签次数」。">按浏览记录挑最常用的置顶。</p>
+      <label class="check"><input type="checkbox" id="freqEnabled" /> 启用高频书签置顶</label>
+      <div class="cat-actions">
+        <button id="freqPermBtn" class="ghost-btn" type="button">授权读取浏览记录</button>
+      </div>
+      <p class="tip" id="freqPermTip">正在检查权限…</p>
+      <label class="field">
+        <span>全库取前几个作为高频书签</span>
+        <input type="number" id="freqTopN" min="0" max="200" step="1" placeholder="10" />
+      </label>
+      <label class="field">
+        <span>每个分类至少保留几个（0 = 不保底）</span>
+        <input type="number" id="freqPerCat" min="0" max="20" step="1" placeholder="1" />
+      </label>
+      <p class="tip" title="访问次数少于 2 次的书签不参与全库评选（点过一两次说明不了「高频」），但仍可被「每分类保底」选中 —— 这样即使某个分类里的书签访问都不多，它的上级目录也不会全是文件夹。">访问少于 2 次不参与评选。</p>
+    </section>
+
+    <section class="card">
+      <h2>配置备份</h2>
+      <p class="tip" title="把当前全部配置（含 AI 接口与 Key）导出为本地文件，重装或配置丢失后可一键导入恢复，无需重填。导出的文件含明文 Key，别分享给别人。">导出为本地文件，可一键恢复。</p>
+      <div class="cat-actions">
+        <button id="exportCfg" class="ghost-btn" type="button">导出配置</button>
+        <button id="importCfg" class="ghost-btn" type="button">导入配置</button>
+        <input type="file" id="importFile" accept=".json,application/json" style="display:none" />
+        <span id="cfgStatus"></span>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button id="save" class="primary">保存设置</button>
+      <span id="status"></span>
+    </div>
+  </main>
+
+  <script src="../js/config.js"></script>
+  <script src="../js/categories.js"></script>
+  <script src="../js/bookmarks.js"></script>
+  <script src="../js/frequency.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

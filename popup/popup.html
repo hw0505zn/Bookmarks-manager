@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="popup.css" />
+  <title>书签智能整理</title>
+</head>
+<body>
+  <header class="head">
+    <span class="logo">🔖</span>
+    <span class="name">书签智能整理</span>
+    <span id="methodTag">—</span>
+    <button id="openOptions" class="icon-btn" title="设置">⚙</button>
+  </header>
+
+  <section class="stats">
+    <div class="stat"><span class="num" id="statTotal">—</span><span class="lbl">书签</span></div>
+    <div class="stat"><span class="num" id="statFolders">—</span><span class="lbl">文件夹</span></div>
+    <div class="stat"><span class="num warn" id="statDup">—</span><span class="lbl">已去重</span></div>
+  </section>
+
+  <section class="dist" id="dist">
+    <div class="hint">点「扫描分类」开始</div>
+  </section>
+
+  <!-- 初始隐藏：没有分类结果时，搜索框与空列表只是噪声，扫描完由 renderTweak 打开 -->
+  <section class="tweak" hidden>
+    <div class="tweak-head">
+      <span>微调分类</span>
+      <span class="tweak-links">
+        <a id="freqPerm" class="link-text" hidden title="授权读取浏览记录，用于自动识别常用书签。只在本地计算，不上传。">开启高频</a>
+        <a id="clearFreq" class="link-text" title="清除全部手动星标（自动判定不受影响）">清空星标</a>
+        <a id="clearOverrides" class="link-text" title="清除全部手动调整的分类">重置调整</a>
+      </span>
+    </div>
+    <div class="freq-bar">
+      <span class="freq-info" id="freqInfo" title="高频书签由浏览器访问记录自动算出（最近半年用得又多又近的）。整理时会平铺在所属分类的一级目录，不塞进二级子文件夹。点每行开头的星星可手动增减；不授权也能手动标星。">★ 高频：—</span>
+    </div>
+    <div class="freq-bar" id="rootBar" hidden>
+      <span class="freq-info" id="rootInfo"></span>
+      <a id="rootEnable" class="link-text" title="让平铺在书签栏（根目录）上的书签也参与整理：与其它书签完全同规则（会被分类、排序，执行整理时原书签被删除）。">参与整理</a>
+    </div>
+    <input id="search" class="search" type="text" placeholder="搜索书签标题或网址…" />
+    <div class="tweak-list" id="tweakList"></div>
+  </section>
+
+  <!-- data-step 供 JS 决定「当前该亮哪一个」：一屏只允许一个实心高亮（详见 popup.js 的动作按钮状态机）。
+       按钮文字带步骤序号：三步主线一目了然。class 只表示色相：primary 蓝 = 普通操作，danger 红 = 会删数据。 -->
+  <section class="actions">
+    <!-- 首帧就带上 is-step：JS 接管前的那一瞬（init 里还有一次 await）不至于三个全灰 -->
+    <button id="btnScan" class="primary is-step" data-step="scan" title="第 1 步：扫描书签树，自动去重后交给 AI 分类。书签没变化时会复用上次分类结果（不调用 AI）；按住 Shift 点击 = 强制重新分类。">1. 扫描分类</button>
+    <button id="btnPreview" class="primary" data-step="preview" title="第 2 步：把分类结果复制一份到「智能书签」文件夹供你检查，不动任何原书签。">2. 生成预览</button>
+    <button id="btnOrganize" class="danger" data-step="organize" title="第 3 步：删除被整理的原书签，并把分类文件夹提升到根目录（同时清理变空的文件夹）。可撤销。若有书签删除失败（例如浏览器受管书签），会暂停目录提升以保证安全；按住 Shift 点击可跳过这些书签强制完成。">3. 执行整理</button>
+  </section>
+
+  <section class="progress" id="progress" role="progressbar" aria-live="polite" aria-valuemin="0" aria-valuemax="100">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-text">
+      <span id="progressLabel"></span>
+      <span class="progress-pct" id="progressPct"></span>
+    </div>
+  </section>
+
+  <section class="undo-bar">
+    <button id="btnUndo" class="undo" disabled>↶ 撤销上一步操作</button>
+  </section>
+
+  <section class="log" id="log" aria-live="polite"></section>
+
+  <!-- 执行整理前的确认面板：默认隐藏，点「执行整理」且确实有可删书签时才浮出 -->
+  <section class="confirm" id="confirmPanel" hidden>
+    <div class="cf-title">执行整理前确认</div>
+    <div class="cf-body" id="confirmBody"></div>
+    <div class="cf-list" id="confirmList"></div>
+    <div class="cf-actions">
+      <button id="confirmCancel" class="cf-btn ghost">取消</button>
+      <button id="confirmOk" class="cf-btn danger">确认删除</button>
+    </div>
+  </section>
+
+  <script src="../js/config.js"></script>
+  <script src="../js/categories.js"></script>
+  <script src="../js/bookmarks.js"></script>
+  <script src="../js/classifier.js"></script>
+  <script src="../js/overrides.js"></script>
+  <script src="../js/frequency.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

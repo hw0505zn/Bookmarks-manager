@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "书签智能整理",
+  "version": "1.9.0",
+  "description": "自动分类与整理浏览器书签：支持规则与 AI 智能分类、重复检测、高频书签置顶、一键整理。",
+  "permissions": ["bookmarks", "storage", "contextMenus", "activeTab"],
+  "optional_permissions": ["history"],
+  "optional_host_permissions": ["<all_urls>"],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "书签智能整理",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "options/options.html",
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
