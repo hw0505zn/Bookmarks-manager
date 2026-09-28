@@ -250,6 +250,19 @@ async function refreshPreviewReady(cfg) {
   return previewReady;
 }
 
+// 跨会话恢复「已分类」的判据（纯函数，便于单测）。
+// hasClassified 是内存变量，弹窗一关就清零；但「扫过分类 / 生成过预览」有两个**持久化**信号：
+//   ① 分类结果缓存（classifyCache.cats 非空）—— scan 成功必写；
+//   ② 预览源快照（previewSourceIds.ids 非空）—— buildPreview 成功必写。
+// 二者任一满足即视为「已经扫过分类」。否则会出现 bug：生成预览后切走再点开弹窗，
+// hasClassified 回 false → suggestedStep 硬退回「扫描分类」，把用户从「下一步执行整理」拽回原点。
+// 只推断状态、绝不触发任何 AI 调用 —— 保持「打开弹窗不自动分类」。
+function shouldAssumeClassified(cache, src) {
+  const cacheHit = !!(cache && cache.cats && Object.keys(cache.cats).length);
+  const previewHit = !!(src && src.ids && src.ids.length);
+  return cacheHit || previewHit;
+}
+
 // ---- 动作按钮状态机结束 ----
 function allBookmarks(excludeFolderId) {
   return new Promise((resolve) => {
@@ -308,10 +321,10 @@ async function loadItems(cfg) {
 function getConfig() {
   return new Promise((resolve) => {
     chrome.storage.sync.get(CONFIG_DEFAULTS, (cfg) => {
-      chrome.storage.local.get({ aiApiKey: "" }, (local) => {
-        cfg.aiApiKey = local.aiApiKey || cfg.aiApiKey || "";
-        applyLocalFallback(cfg); // 本地兜底：storage 被清空时自动回填 config.js 的值
-        resolve(cfg);
+      // AI 接口配置（地址/Key/模型）只存 local、不上云；sync 里有旧值则顺带迁移清理
+      mergeAiLocalConfig(cfg).then((c) => {
+        applyLocalFallback(c); // 本地兜底：storage 被清空时自动回填 config.js 的值
+        resolve(c);
       });
     });
   });
@@ -2457,6 +2470,16 @@ $("clearOverrides").addEventListener("click", async () => {
 (async function init() {
   await refreshActiveCategories();
   updateActionState(); // 先按初始状态点亮「扫描分类」，别让按钮在 await 期间四个全灰
+  // 恢复跨会话的「已分类」状态（见 shouldAssumeClassified）：扫过分类 / 生成过预览后重开弹窗，
+  // 高亮应停在「下一步」（生成预览 / 执行整理），而不是被打回「扫描分类」。
+  // 这一步只读 storage、不跑分类、不调 AI，保持「打开弹窗不自动分类」。
+  const [cache0, src0] = await Promise.all([loadClassCache(), loadPreviewSource()]);
+  const restored = shouldAssumeClassified(cache0, src0);
+  if (restored) setClassified(true);
   await refreshStats(); // 只读：统计数字 / 撤销栈 / 预览是否就绪，不分类、不调 AI
-  log("点「扫描分类」开始。书签没变化时会直接复用上次结果，不会重复调用 AI。");
+  log(
+    restored
+      ? "已恢复上次进度。书签没变化时可直接点下一步；想重新分类请点「扫描分类」。"
+      : "点「扫描分类」开始。书签没变化时会直接复用上次结果，不会重复调用 AI。"
+  );
 })();

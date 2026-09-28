@@ -61,6 +61,12 @@ const DEFAULTS = {
   autoDedupe: true
 };
 
+// AI 接口配置（地址 / Key / 模型）属敏感信息：只存 storage.local，绝不同步云端。
+// 键集合供 service-worker / popup / options 三处读写复用，避免键名漂移导致漏迁移。
+const AI_CONFIG_KEYS = ["aiBaseUrl", "aiApiKey", "aiModel"];
+// local 读取时的默认值。用 null 表示「从未在本地存过」——以区分「没存过」与「用户清空为空串」。
+const AI_CONFIG_LOCAL_DEFAULTS = { aiBaseUrl: null, aiApiKey: null, aiModel: null };
+
 // 本地兜底配置：可在此预填你的 AI 接口地址与 Key（以及分类方法）。
 // 作用：当 chrome.storage 被清空（典型场景：移除扩展再重新「加载已解压」）后，
 //       插件启动时会用这里的值自动回填，无需每次重新手工填写。
@@ -426,4 +432,32 @@ function applyLocalFallback(cfg) {
     if (!cfg[k] && LOCAL_FALLBACK[k]) cfg[k] = LOCAL_FALLBACK[k];
   }
   return cfg;
+}
+
+// 从 storage.local 读 AI 接口配置（地址/Key/模型），优先本地、其次回退 sync 里的旧值（并立即迁移）。
+// 返回 Promise<cfg>：在传入 cfg 基础上就地补齐 aiBaseUrl/aiApiKey/aiModel 三个字段。
+// 默认值规则：本地从没存过且 sync 也没有 → 保持 cfg 里 DEFAULTS 的默认值（即不覆盖）。
+function mergeAiLocalConfig(cfg) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(AI_CONFIG_LOCAL_DEFAULTS, (local) => {
+      const legacy = {};
+      for (const k of AI_CONFIG_KEYS) {
+        // 本地有值（含空串）→ 用本地；否则用 sync 里的旧值（升级前还在云上的副本）
+        if (local[k] !== null) {
+          cfg[k] = local[k];
+        } else if (cfg[k] !== undefined) {
+          legacy[k] = cfg[k]; // sync 有旧值，待迁移到本地
+        }
+      }
+      const finish = () => resolve(cfg);
+      // 有旧值要迁：写入 local 并从 sync 删除（保证云上不残留 AI 配置）
+      if (Object.keys(legacy).length) {
+        chrome.storage.local.set(legacy, () => {
+          chrome.storage.sync.remove(AI_CONFIG_KEYS, finish);
+        });
+      } else {
+        finish();
+      }
+    });
+  });
 }

@@ -20,10 +20,10 @@ function createFolder(parentId, title) {
 function getConfig() {
   return new Promise((resolve) => {
     chrome.storage.sync.get(DEFAULTS, (cfg) => {
-      chrome.storage.local.get({ aiApiKey: "" }, (local) => {
-        cfg.aiApiKey = local.aiApiKey || cfg.aiApiKey || "";
-        applyLocalFallback(cfg); // 本地兜底：storage 被清空时自动回填 config.js 的值
-        resolve(cfg);
+      // AI 接口配置（地址/Key/模型）只存 local、不上云；sync 里有旧值则顺带迁移清理
+      mergeAiLocalConfig(cfg).then((c) => {
+        applyLocalFallback(c); // 本地兜底：storage 被清空时自动回填 config.js 的值
+        resolve(c);
       });
     });
   });

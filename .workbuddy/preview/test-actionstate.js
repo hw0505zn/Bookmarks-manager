@@ -77,6 +77,7 @@ function make(opts) {
     "$", "loadPreviewSource", "getConfig", "currentItems",
     body +
       "\n return { STEP_IDS, suggestedStep, actionButtonState, updateActionState, beginStep, endStep, refreshPreviewReady," +
+      " shouldAssumeClassified," +
       " setClassified," +
       " getBusy: () => busyStep, getPreviewReady: () => previewReady, getHasClassified: () => hasClassified };"
   )($, loadPreviewSource, getConfig, currentItems);
@@ -230,27 +231,56 @@ function make(opts) {
   await e3.mod.endStep();
   eq(e3.has("btnScan", "is-step"), true, "没扫到书签时 → 高亮回到「扫描并分类」");
 
-  console.log("=== I. 打开弹窗但未扫描分类：绝不引导去点「执行整理」===");
-  // 2026-09-28：弹窗改成打开不自动分类。此时最危险的组合是——
-  // 上一轮的预览快照还在（previewReady=true）、而分类结果还没算，
-  // 老规则会直接高亮「执行整理」（那个会删原书签的红色按钮）。
+  console.log("=== I. 纯状态机守卫：classified=false 时一律高亮「扫描分类」===");
+  // ⚠ 定位变更（2026-09-29）：下面这段只在**状态机纯逻辑层面**成立 ——
+  //   真实 init 现在会从持久化信号恢复 classified（见 J）。因此「有快照 + classified=false」
+  //   这个组合已不再由 init 产生，本节退化为「万一恢复逻辑失效时的兜底守卫」。
+  //   保留它是因为：suggestedStep 的 `!classified → scan` 仍是最后一道安全网——
+  //   宁可把用户引回安全的扫描，也不要误亮那个会删原书签的按钮。
   const i1 = make({ items: 5, src: { ids: ["a"], organizeRoot: false }, cfg: { organizeRootItems: false } });
-  eq(i1.mod.getHasClassified(), false, "刚打开：hasClassified 为 false");
+  eq(i1.mod.getHasClassified(), false, "纯状态机：classified 初始为 false");
   await i1.mod.refreshPreviewReady();
   i1.mod.updateActionState();
-  eq(i1.mod.getPreviewReady(), true, "残留的旧预览快照确实判定为「就绪」");
-  eq(i1.has("btnScan", "is-step"), true, "★ 此时高亮的是「扫描分类」，而不是「执行整理」");
-  eq(i1.has("btnOrganize", "is-step"), false, "★「执行整理」不高亮（一打开就亮红按钮 = 引导用户去删数据）");
+  eq(i1.mod.getPreviewReady(), true, "快照确实判定为「就绪」");
+  eq(i1.has("btnScan", "is-step"), true, "classified=false 时高亮「扫描分类」（兜底守卫）");
+  eq(i1.has("btnOrganize", "is-step"), false, "此时「执行整理」不高亮");
   eq(i1.stepCount(), 1, "仍然只有 1 个高亮");
   eq(i1.els.btnOrganize.disabled, false, "不高亮 ≠ 禁用：用户想直接点仍可点（只是不引导）");
 
   i1.mod.setClassified(true);
   i1.mod.updateActionState();
-  eq(i1.has("btnOrganize", "is-step"), true, "扫完之后高亮才前移到「执行整理」");
+  eq(i1.has("btnOrganize", "is-step"), true, "置为已分类后高亮前移到「执行整理」");
 
   const i2 = make({ items: 5, src: null, cfg: {} });
   i2.mod.updateActionState();
   eq(i2.has("btnScan", "is-step"), true, "没预览且未分类 → 同样是「扫描分类」");
+
+  console.log("=== J. 跨会话恢复「已分类」：重开弹窗不回退到扫描 ===");
+  // 2026-09-29 修的 bug：点击「生成预览」后切走、再点开插件，
+  // 高亮错误地回到「扫描分类」（应该停在下一步「执行整理」）。
+  // 根因：hasClassified 是内存变量，弹窗关闭即清零；而预览快照 / 分类缓存是持久化的。
+  const A2 = make().mod.shouldAssumeClassified;
+  eq(A2(null, null), false, "没有任何持久化信号 → 不恢复（真·首次打开）");
+  eq(A2({ cats: {} }, null), false, "分类缓存存在但为空 → 不算已分类");
+  eq(A2(null, { ids: [] }), false, "预览快照存在但清单为空（执行整理后会清空）→ 不算已分类");
+  eq(A2({ cats: { a: "c1" } }, null), true, "★ 有分类缓存 → 视为已分类（扫过分类但还没生成预览）");
+  eq(A2(null, { ids: ["a"] }), true, "★ 有预览快照 → 视为已分类（生成过预览）");
+  eq(A2({ cats: { a: "c1" } }, { ids: ["a"] }), true, "两者都有 → 已分类");
+
+  // 端到端：模拟「生成预览后切走再打开」——持久化了预览快照，重开时应高亮「执行整理」
+  const j1 = make({ items: 5, src: { ids: ["a"], organizeRoot: false }, cfg: { organizeRootItems: false } });
+  const restored = j1.mod.shouldAssumeClassified({}, { ids: ["a"], organizeRoot: false });
+  eq(restored, true, "★ 重开弹窗：从预览快照恢复出「已分类」");
+  j1.mod.setClassified(restored);
+  await j1.mod.refreshPreviewReady();
+  j1.mod.updateActionState();
+  eq(j1.has("btnOrganize", "is-step"), true, "★ 重开后高亮停在「执行整理」，不再打回「扫描分类」");
+  eq(j1.has("btnScan", "is-step"), false, "「扫描分类」不再高亮");
+
+  // 反例：执行整理后预览快照被清空、且没有分类缓存 → 应回到「扫描分类」（维护既有行为）
+  const j2 = make({ items: 5, src: null, cfg: {} });
+  const restored2 = j2.mod.shouldAssumeClassified(null, null);
+  eq(restored2, false, "整理完成且无缓存 → 不恢复，回到扫描（保持既有行为）");
 
   console.log(`\n${fails ? "✗" : "✓"} 动作按钮状态机测试：${total - fails}/${total} 通过`);
   if (fails) process.exitCode = 1;

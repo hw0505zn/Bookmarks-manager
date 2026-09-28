@@ -38,14 +38,10 @@ function cloneDefault() {
 
 function load() {
   chrome.storage.sync.get({ ...DEFAULTS, userCategories: null }, (cfg) => {
-    // API Key 单独存于本地（storage.local），不同步到云端
-    chrome.storage.local.get({ aiApiKey: "" }, (local) => {
-      // 兼容旧版：若本地无 Key 但 sync 仍有，迁移到本地并清理 sync 副本
-      if (!local.aiApiKey && cfg.aiApiKey) {
-        chrome.storage.local.set({ aiApiKey: cfg.aiApiKey });
-        chrome.storage.sync.remove("aiApiKey");
-      }
-      cfg.aiApiKey = local.aiApiKey || cfg.aiApiKey || "";
+    // AI 接口配置（地址/Key/模型）单独存于本地（storage.local），不同步到云端；
+    // mergeAiLocalConfig 顺带把旧版残留在 sync 里的副本迁移到 local 并清理。
+    mergeAiLocalConfig(cfg).then((cfgM) => {
+      cfg = cfgM;
       document.querySelector(`input[name="method"][value="${cfg.method}"]`).checked = true;
       $("aiBaseUrl").value = cfg.aiBaseUrl || "";
       $("aiApiKey").value = cfg.aiApiKey || "";
@@ -79,7 +75,13 @@ function load() {
 function renderCats() {
   const wrap = $("catList");
   wrap.innerHTML = "";
-  cats.forEach((c, idx) => {
+  // 兜底「其他」（system:true）永远排在最后；其余分类保持原有相对顺序。
+  // 不能直接 sort（那会把非兜底类的顺序也打乱），而是把非兜底、兜底各归一堆再拼接。
+  const normal = [];
+  const sys = [];
+  cats.forEach((c, i) => (c.system ? sys : normal).push({ c, i }));
+  const ordered = [...normal, ...sys];
+  ordered.forEach(({ c, i: idx }) => {
     const row = document.createElement("div");
     row.className = "cat-edit";
     row.innerHTML =
@@ -498,12 +500,14 @@ function save() {
   // 返回 Promise：供「应用建议」「撤销建议」await，确保界面提示在真正落盘之后才显示
   const done = () =>
     new Promise((resolve) => {
-      // API Key 单独写入本地存储，不上云；其余配置写入 sync
+      // AI 接口配置（地址/Key/模型）单独写入本地存储，不上云；其余配置写入 sync
       const syncCfg = Object.assign({}, cfg);
-      delete syncCfg.aiApiKey;
+      for (const k of AI_CONFIG_KEYS) delete syncCfg[k];
       chrome.storage.sync.set(syncCfg, () => {
-        chrome.storage.local.set({ aiApiKey: cfg.aiApiKey }, () => {
-          chrome.storage.sync.remove("aiApiKey"); // 清理旧版本可能存在的同步副本
+        const localAi = {};
+        for (const k of AI_CONFIG_KEYS) localAi[k] = cfg[k] || "";
+        chrome.storage.local.set(localAi, () => {
+          chrome.storage.sync.remove(AI_CONFIG_KEYS); // 清理旧版本可能留在云上的副本
           status.textContent = "已保存 ✓";
           status.className = "";
           setTimeout(() => (status.textContent = ""), 2000);
